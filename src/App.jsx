@@ -20,23 +20,30 @@ const TREATMENTS = ["Limpieza","Ortodoncia","Implante","Blanqueamiento","Empaste
 const DOCTORS = ["Dr. García","Dra. López","Dr. Martínez"]
 const CHANNELS = ["WhatsApp","Web","Llamada","Instagram","Referido"]
 const STATUSES = ["Activo","Activo","Activo","Seguimiento","Nuevo","Nuevo","Inactivo"]
+const SPARK_PRODUCTS = ["Spark 10","Spark 20","Spark 35","Spark Advanced"]
 
 function rnd(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min }
 
-const PATIENTS = NAMES.map((name, i) => ({
-  id: i + 1, name,
-  phone: `+34 6${String(11000000 + i * 7919321 % 88999999).slice(0, 8)}`,
-  lastVisit: i < 10 ? `${rnd(1,28)}/10/2024` : i < 20 ? `${rnd(1,28)}/04/2024` : `${rnd(1,28)}/06/2023`,
-  nextVisit: i < 15 ? `${rnd(1,28)}/${rnd(1,3)}/2025` : null,
-  treatment: TREATMENTS[i % TREATMENTS.length],
-  status: i > 22 ? "Inactivo" : STATUSES[i % STATUSES.length],
-  doctor: DOCTORS[i % DOCTORS.length],
-  viaAgent: i % 3 !== 0,
-  value: rnd(120, 3800),
-  hygieneDate: i < 8 ? `${rnd(1,28)}/12/2024` : `${rnd(1,28)}/06/2024`,
-  treatmentDone: i % 4 !== 1,
-  channel: CHANNELS[i % CHANNELS.length],
-}))
+const PATIENTS = NAMES.map((name, i) => {
+  const treatment = TREATMENTS[i % TREATMENTS.length]
+  const isOrtho = treatment === "Ortodoncia"
+  return {
+    id: i + 1, name,
+    phone: `+34 6${String(11000000 + i * 7919321 % 88999999).slice(0, 8)}`,
+    lastVisit: i < 10 ? `${rnd(1,28)}/10/2024` : i < 20 ? `${rnd(1,28)}/04/2024` : `${rnd(1,28)}/06/2023`,
+    nextVisit: i < 15 ? `${rnd(1,28)}/${rnd(1,3)}/2025` : null,
+    treatment,
+    status: i > 22 ? "Inactivo" : STATUSES[i % STATUSES.length],
+    doctor: DOCTORS[i % DOCTORS.length],
+    viaAgent: i % 3 !== 0,
+    value: rnd(120, 3800),
+    hygieneDate: i < 8 ? `${rnd(1,28)}/12/2024` : `${rnd(1,28)}/06/2024`,
+    treatmentDone: i % 4 !== 1,
+    channel: CHANNELS[i % CHANNELS.length],
+    sparkProduct: isOrtho ? SPARK_PRODUCTS[i % SPARK_PRODUCTS.length] : null,
+    refinements: rnd(0, 4),
+  }
+})
 
 const MONTH_REVENUE = [
   { mes: "Ene", ingresos: 18400, ano_ant: 15200, limpieza: 3200, ortodoncia: 5800, implantes: 4600, estetica: 2100, otros: 2700 },
@@ -432,6 +439,76 @@ function Direccion() {
       </div>
 
       <Card>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Ortodoncia Spark — detalle de casos</div>
+        <div style={{ fontSize: 12, color: C.muted, marginBottom: 16 }}>Distribución por producto y refinamientos medios por caso</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 10 }}>Casos por producto Spark</div>
+            {(() => {
+              const orthoPatients = PATIENTS.filter(p => p.sparkProduct)
+              const counts = ["Spark 10","Spark 20","Spark 35","Spark Advanced"].map(prod => ({
+                name: prod, count: orthoPatients.filter(p => p.sparkProduct === prod).length,
+                color: [C.teal, C.blue, C.navy, C.purple][["Spark 10","Spark 20","Spark 35","Spark Advanced"].indexOf(prod)]
+              }))
+              const max = Math.max(...counts.map(c => c.count))
+              return counts.map(({ name, count, color }) => (
+                <div key={name} style={{ marginBottom: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ fontSize: 12, color: C.text, display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: 2, background: color, display: "inline-block" }} />{name}
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color }}>{count} casos</span>
+                  </div>
+                  <div style={{ background: "#F1F5F9", borderRadius: 4, height: 7 }}>
+                    <div style={{ width: max ? `${Math.round(count/max*100)}%` : "0%", height: "100%", background: color, borderRadius: 4 }} />
+                  </div>
+                </div>
+              ))
+            })()}
+          </div>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 10 }}>Refinamientos por paciente</div>
+            {(() => {
+              const ortho = PATIENTS.filter(p => p.sparkProduct)
+              const avg = ortho.length ? (ortho.reduce((s, p) => s + p.refinements, 0) / ortho.length).toFixed(1) : 0
+              const max = Math.max(...ortho.map(p => p.refinements))
+              const dist = [0,1,2,3,4].map(n => ({ label: `${n} ref.`, count: ortho.filter(p => p.refinements === n).length }))
+              return (
+                <>
+                  <div style={{ display: "flex", gap: 16, marginBottom: 14 }}>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: 24, fontWeight: 700, color: C.navy }}>{avg}</div>
+                      <div style={{ fontSize: 11, color: C.muted }}>promedio</div>
+                    </div>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: 24, fontWeight: 700, color: max >= 3 ? C.red : C.amber }}>{max}</div>
+                      <div style={{ fontSize: 11, color: C.muted }}>máximo</div>
+                    </div>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: 24, fontWeight: 700, color: C.teal }}>{ortho.length}</div>
+                      <div style={{ fontSize: 11, color: C.muted }}>casos activos</div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 4, alignItems: "flex-end", height: 60 }}>
+                    {dist.map(({ label, count }) => {
+                      const maxCount = Math.max(...dist.map(d => d.count))
+                      const h = maxCount ? Math.round(count / maxCount * 52) : 0
+                      return (
+                        <div key={label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                          <div style={{ width: "100%", height: h, background: C.navy, borderRadius: "3px 3px 0 0", minHeight: count ? 4 : 0 }} />
+                          <div style={{ fontSize: 10, color: C.muted }}>{label}</div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )
+            })()}
+          </div>
+        </div>
+      </Card>
+
+      <Card>
         <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14 }}>Evolución ingresos 2024 vs 2023 por mes</div>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={MONTH_REVENUE}>
@@ -600,7 +677,7 @@ function Pacientes() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: C.bg }}>
-                    {["Paciente","Tratamiento","Médico","Última visita","Próxima cita","Estado","Valor","IA"].map(h => (
+                    {["Paciente","Tratamiento","Producto Spark","Refinamientos","Médico","Próxima cita","Estado","Valor"].map(h => (
                       <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: C.muted, borderBottom: `1px solid ${C.border}`, whiteSpace: "nowrap" }}>{h}</th>
                     ))}
                   </tr>
@@ -610,12 +687,20 @@ function Pacientes() {
                     <tr key={p.id} style={{ background: i % 2 === 0 ? "#FFF" : C.bg }}>
                       <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 500, color: C.text, whiteSpace: "nowrap" }}>{p.name}</td>
                       <td style={{ padding: "10px 14px", fontSize: 12, color: C.text }}>{p.treatment}</td>
+                      <td style={{ padding: "10px 14px" }}>
+                        {p.sparkProduct ? (
+                          <span style={{ background: C.purpleL, color: C.purple, fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 9999 }}>{p.sparkProduct}</span>
+                        ) : <span style={{ color: C.border }}>—</span>}
+                      </td>
+                      <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                        {p.sparkProduct ? (
+                          <span style={{ fontSize: 13, fontWeight: 700, color: p.refinements >= 3 ? C.red : p.refinements >= 2 ? C.amber : C.green }}>{p.refinements}</span>
+                        ) : <span style={{ color: C.border }}>—</span>}
+                      </td>
                       <td style={{ padding: "10px 14px", fontSize: 12, color: C.muted, whiteSpace: "nowrap" }}>{p.doctor}</td>
-                      <td style={{ padding: "10px 14px", fontSize: 12, color: C.muted }}>{p.lastVisit}</td>
                       <td style={{ padding: "10px 14px", fontSize: 12, color: p.nextVisit ? C.text : C.red }}>{p.nextVisit || "Sin agendar"}</td>
                       <td style={{ padding: "10px 14px" }}><Badge s={p.status} /></td>
                       <td style={{ padding: "10px 14px", fontSize: 12, fontWeight: 600, color: C.text }}>{euro(p.value)}</td>
-                      <td style={{ padding: "10px 14px", textAlign: "center" }}>{p.viaAgent ? <span style={{ color: C.teal, fontWeight: 700 }}>✓</span> : <span style={{ color: C.border }}>—</span>}</td>
                     </tr>
                   ))}
                 </tbody>
